@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Smart Bangkok Map</title>
+
+  <meta charset="UTF-8">
+  
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.7.1/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.7.1/dist/leaflet.js"></script>
+  <link rel="icon" type="image/x-icon" href="thumbnail.png">
+
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/4.6.0/css/bootstrap.min.css" />
+  <script src="https://kit.fontawesome.com/9d5f906724.js" crossorigin="anonymous"></script>
+
+  <script src="quantity_waste.js"></script>
+  <script src="waste.js"></script>
+  <script  src="quantity_people.js"></script>
+  <script  src="quantity_home.js"></script>
+  
+  <style>
+
+      body {
+    font-family: "Courier New", monospace;
+      }
+
+      /* arrow */
+      .toggle-arrow {
+        cursor: pointer;
+      }
+      .arrow {
+        display: inline-block;
+        width: 0;
+        height: 0;
+        border-style: solid;
+        border-width: 5px 0 5px 7px;
+        border-color: transparent transparent transparent #333;
+        margin-right: 10px;
+        transform: rotate(0deg);
+        transition: 0.2s;
+      }
+      .text {
+        display: none;
+        margin-top: 10px;
+      }
+      .open .arrow {
+        transform: rotate(90deg);
+      }
+      .open .text {
+        display: block;
+      }
+
+      /* bar */
+      .sidenav {
+        height: 100%;
+        width: 0;
+        position: fixed;
+        z-index: 999;
+        top: 0;
+        left: 0;
+        background-color: #111;
+        opacity: 0.9;
+        overflow-x: hidden;
+        transition: 0.5s;
+        padding-top: 65px;
+      }
+
+      .sidenav a {
+        padding: 10px 10px 10px 32px;
+        text-decoration: none;
+        font-size: 25px;
+        color: #818181;
+        display: block;
+        transition: 0.3s;
+      }
+
+      .sidenav a:hover {
+        color: #f1f1f1;
+      }
+
+      .sidenav .closebtn {
+        position: absolute;
+        top: 0;
+        right: 25px;
+        font-size: 36px;
+        margin-left: 50px;
+      }
+
+      .sidenav.closed a {
+        display: none;
+      }
+
+      .sidenav.opened a {
+        display: none;
+      }
+
+      /* marker icon */
+      .number-icon {
+        border: 2px solid #000000; 
+        border-radius: 50%;
+        color: #2e2e2e;
+        font-size: 12px;
+        font-weight: bold;
+        text-align: center;
+        width: 24px;
+        height: 24px;
+        line-height: 24px;
+      }
+    
+  </style>
+</head>
+
+<!-- bar -->
+
+<body>
+
+ <div style = "background-color: #1e1e1e; width: 100vw; font-size:30px;">
+    <span style="font-size:27px; cursor:pointer; color: #aeaaaa; margin-left: 10px;" onclick="openNav()">&#9776; </span> 
+    <span style="color: #aeaaaa; font-size: 25px; "> SMART BANGKOK </span>
+    <!-- <img src="https://scontent.fbkk8-2.fna.fbcdn.net/v/t1.6435-9/125097983_2830428843907274_6272601186749463690_n.jpg?_nc_cat=106&ccb=1-7&_nc_sid=09cbfe&_nc_eui2=AeFdwH17e4b-MT7lj2I34gNBB2Vqlryueu4HZWqWvK567uxCt9Tyh00uCNCJcwehpLfJHYiNMd0j3gHpseRB3-R8&_nc_ohc=RFgqc9haVOQAX__H0zS&_nc_ht=scontent.fbkk8-2.fna&oh=00_AfCs8We441WgatxIZmnLFZ85frtEVFCgx7fDWduc8Kf_ag&oe=640FF8DA"style="margin-left: 80%; margin-bottom: 5px;width: 30px; height: 30px; opacity: 85%;"> -->
+  </div>
+
+  <div id="mySidenav" class="sidenav ">     
+
+    <a href="javascript:void(0)" class="closebtn" onclick="closeNav()" >&times;</a>
+    <a href="#" id = "dust"><span style="padding-right: 15px;"><i class="fas fa-wind" style="font-size: 20px;"></i></span>AQI</a>
+    <a href="#" id = "waste"><span style="padding-right: 15px;"><i class="fas fa-trash" style="font-size: 20px;"></i></span>Waste</a>
+    <a href="#" id = "people"><span style="padding-right: 15px;"><i class="	fas fa-user-alt" style="font-size: 20px;"></i></span>People</a>
+    <a href="#" id = "home"><span style="padding-right: 15px;"><i class="fas fa-home" style="font-size: 20px;"></i></span>Home</a>
+  
+  </div>
+
+  </div>
+
+  <script>
+    function openNav() {
+
+      document.getElementById("mySidenav").classList.add("opened");
+      setTimeout(function() {
+      document.getElementById("mySidenav").classList.remove("opened");
+      }, 300);
+
+      document.getElementById("mySidenav").classList.remove("closed");
+      document.getElementById("mySidenav").style.width = "250px";
+      
+    }
+
+    function closeNav() {
+      document.getElementById("mySidenav").style.width = "0";
+      document.getElementById("mySidenav").classList.add("closed");
+    }
+
+  </script> 
+
+
+<!-- map -->
+
+  <div id="map" style="height: 94vh; width: 99.99vw;"></div>
+
+  <script>
+
+    const button_dust = document.getElementById('dust');
+    const button_waste = document.getElementById('waste');
+    const button_people = document.getElementById('people');
+    const button_home = document.getElementById('home');
+
+    var dname = ''               //quantity_people[0].dname
+    var male_quantity = ''       //quantity_people[0].male_quantity
+    var female_quantity = ''     //quantity_people[0].female_quantity
+    var total_quantity = ''      //quantity_people[0].total_quantity
+
+    var dname_home = ''
+    var home_quantity = ''
+    
+    var check = 0;
+    var m = L.map('map',{ minZoom: 3, maxZoom: 14, center: [0,0], dragging: true, scrollWheelZoom: "center", zoomControl: false}).setView([13.736717,100.613186], 10.8);
+    var watercolor = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(m);
+    var geo = L.geoJSON(quantity_waste, {
+      style: function(feature) {
+          return {
+            fillColor: 'lightgreen',  
+            fillOpacity: 0.4,
+            color: 'green',
+            weight: 1.5
+          };
+        },
+
+      onEachFeature: function (feature, layer) {
+
+      var popupContent = '';
+
+      for (var property in feature.properties) {
+        if (feature.properties.hasOwnProperty(property)) {
+        
+          if (property == 'name') {
+            popupContent += feature.properties[property] + "<br>";
+          }
+        }
+      }
+layer.bindPopup(popupContent);
+
+      layer.on('click', function(e) {
+      try {
+        if (layer != previous_layer){
+          previous_layer.setStyle({  
+          fillColor: 'lightgreen',  
+          fillOpacity: 0.4,
+          });
+        }
+      }
+      catch(e) {
+
+      }
+      layer.setStyle({  
+
+            fillColor: 'red',  
+            fillOpacity: 0.4,
+          });
+
+      previous_name = feature.properties['name']
+      previous_layer = layer
+    });
+    } 
+  }).addTo(m);
+
+//AQI
+
+var geo_aqi = L.geoJSON(quantity_waste, {
+      style: function(feature) {
+          return {
+            fillColor: 'lightgreen',  
+            fillOpacity: 0.4,
+            color: 'green',
+            weight: 1.5
+          };
+        },
+
+      onEachFeature: function (feature, layer) {
+      var popupContent = '';
+
+      for (var property in feature.properties) {
+        if (feature.properties.hasOwnProperty(property)) {
+         
+          if (property == 'name') {
+            popupContent += feature.properties[property] + "<br>";
+          }
+        }
+      }
+      layer.bindPopup(popupContent);
+
+      layer.on('click', function(e) {
+      try {
+        if (layer != previous_layer){
+          previous_layer.setStyle({  
+          fillColor: 'lightgreen',  
+          fillOpacity: 0.4,
+          });
+        }
+      }
+      catch(e) {
+
+      }
+      layer.setStyle({  
+
+            fillColor: 'red',  
+            fillOpacity: 0.4,
+          });
+
+      previous_name = feature.properties['name']
+      previous_layer = layer
+
+      fetch('http://localhost:3000/proxy?url=http://air4thai.pcd.go.th/services/getNewAQI_JSON.php?region=1')
+      .then(response => response.json())
+      .then(data => {
+
+      const regions = data.stations.map(item => ({
+        name: item.nameTH,
+        lat: item.lat,
+        lng: item.long,
+        aqi: item.AQILast.AQI.aqi,
+        
+      }));
+      // console.log(regions) 
+
+    regions.forEach(region => {
+      if (check <= 81){
+      
+       const thresholds = [25, 50, 100, 200];
+
+      let bgColor;
+      let emotion;
+      if (region.aqi <= thresholds[0]) {
+        bgColor = '#87ceeb';
+      } else if (region.aqi <= thresholds[1]) {
+        bgColor = '#7FEB7F';
+      } else if (region.aqi <= thresholds[2]) {
+        bgColor = '#fdfd7d';
+      } else if (region.aqi <= thresholds[3]) {
+        bgColor = '#ffb861';
+      } else {
+        bgColor = '#ff6961';
+      }
+        const marker = L.marker([region.lat, region.lng], {icon: L.divIcon({className: 'number-icon', 
+                                                                          
+                                                                            iconSize: [28, 28],
+                                                                            iconAnchor: [15, 15],
+                                                                            popupAnchor: [0, -15],
+                                                                            html: '<div style="background-color: ' + bgColor + '; border-radius: 50%; width: 25px; height: 25px; text-align: center; line-height: 25px;">' + region.aqi + '</div>'
+                                                                          })}).addTo(geo_aqi);
+        marker.bindPopup("<p style='color: black; background-color:" + bgColor + "'>" + region.name + ":" +" AQI "+ region.aqi + "</p>");
+        
+         }
+      check++
+        }
+      );
+    })
+    .catch(error => console.error(error));
+    });
+
+    }  
+  })
+
+//Waste
+  var waste_data = [];
+  var month = ['ต.ค. (2563)', 'พ.ย. (2563)', 'ธ.ค. (2563)', 'ม.ค.', 'ก.พ.', 'พ.ค.', 'มิ.ย.', 'ก.ค.', 'ส.ค.', 'ก.ย.'];
+  
+  // fetch('http://localhost:3000/proxy?url=http://127.0.0.1:3000/api/data')
+  //       .then(response => response.json())
+  //       .then(data => {
+          
+  //         waste_data.push(data)
+  //       })
+  //       .catch(error => {
+  //         console.error('Error fetching data:', error);
+  //       });
+        
+  //   console.log(waste_data)
+    
+    var geo_waste = L.geoJSON(quantity_waste, {
+      style: function(feature) {
+          return {
+            fillColor: 'lightgreen',  
+            fillOpacity: 0.4,
+            color: 'green',
+            weight: 1.5
+          };
+        },
+
+      onEachFeature: function (feature, layer) {
+      var popupContent = '';
+
+      for (var property in feature.properties) {
+        if (feature.properties.hasOwnProperty(property)) {
+          if (property == '2554' ) {
+            popupContent += '<div class="popup-data2554">' + property + ": " + feature.properties[property].toLocaleString() + ' ตัน' + '<div class="toggle-arrow"> <div class="arrow"></div> <div class="text">ม.ค. 4,521.03 ตัน<br>ก.พ. 5,249.05 ตัน<br>มี.ค. 5,578.71 ตัน<br>เม.ย. 5,397.36 ตัน<br>พ.ค. 5,970.41 ตัน<br>มิ.ย. 6,007.60 ตัน<br>ก.ค. 6,603.06 ตัน<br>ส.ค. 5,968.56 ตัน<br>ก.ย. 5,875.93 ตัน</div></div>' + '<br>' + '</div>';
+          }
+          else if (property == '2555') {
+          popupContent += '<div class="popup-data2555">' + property + ": " + feature.properties[property].toLocaleString() + ' ตัน' + '<div class="toggle-arrow"> <div class="arrow"></div> <div class="text">ม.ค. 5,421.03 ตัน<br>ก.พ. 5,269.05 ตัน<br>มี.ค. 5,258.71 ตัน<br>เม.ย. 4,897.36 ตัน<br>พ.ค. 5,360.41 ตัน<br>มิ.ย. 4,207.60 ตัน<br>ก.ค. 6,253.06 ตัน<br>ส.ค. 5,668.56 ตัน<br>ก.ย. 5,205.93 ตัน</div></div>' + '<br>' + '</div>';
+          }
+          else if (property == '2556') {
+            popupContent += '<div class="popup-data2556">' + property + ": " + feature.properties[property].toLocaleString() + ' ตัน' + '<div class="toggle-arrow"> <div class="arrow"></div> <div class="text">ม.ค. 3,461.03 ตัน<br>ก.พ. 6,249.05 ตัน<br>มี.ค. 5,572.78 ตัน<br>เม.ย. 5,777.36 ตัน<br>พ.ค. 4,970.41 ตัน<br>มิ.ย. 6,507.60 ตัน<br>ก.ค. 6,333.06 ตัน<br>ส.ค. 5,265.56 ตัน<br>ก.ย. 5,872.93 ตัน</div></div>' + '<br>' + '</div>';
+
+          } 
+          else if (property == 'name') {
+            popupContent += 'ชื่อเขต' + ": " + feature.properties[property] + "<br>";
+          }
+        }
+      }
+
+      layer.bindPopup(popupContent);
+
+      // load(layer);
+
+      layer.on('click', function(e) {
+      try {
+        if (layer != previous_layer){
+          previous_layer.setStyle({  
+          fillColor: 'lightgreen',  
+          fillOpacity: 0.4,
+          });
+        }
+      }
+      catch(e) {
+
+      }
+      layer.setStyle({  
+
+            fillColor: 'red',  
+            fillOpacity: 0.4,
+          });
+
+      previous_name = feature.properties['name']
+      previous_layer = layer
+    });
+    } 
+  })
+
+//People
+
+  var geo_people = L.geoJSON(quantity_waste, {
+        style: function(feature) {
+            return {
+              fillColor: 'lightgreen',  
+              fillOpacity: 0.4,
+              color: 'green',
+              weight: 1.5
+            };
+          },
+
+        onEachFeature: function (feature, layer) {
+
+        var popupContent = '';
+
+        for (var property in feature.properties) {
+          if (feature.properties.hasOwnProperty(property)) {
+          
+            if (property == 'name') {
+
+              // console.log(feature.properties[property])
+              for (var i = 0; i <= 1918; i++) {
+                dname = quantity_people[i].dname
+                
+                if ('เขต'+dname == feature.properties[property]) {
+
+                  male_quantity = quantity_people[i].male_quantity
+                  female_quantity = quantity_people[i].female_quantity
+                  total_quantity = quantity_people[i].total_quantity
+                  
+                  popupContent += `<i class="fa fa-mars"></i>
+                                  <span style="font-family: 'inherit'; font-size: 13.5px;">
+                                   :<spacer> ${male_quantity.toLocaleString()} 
+                                  </span><spacer>คน<br>`
+                  popupContent += `<i class="fa fa-venus"></i>
+                                  <span style="font-family: 'inherit'; font-size: 13.5px;">
+                                   :<spacer> ${female_quantity.toLocaleString()} 
+                                  </span><spacer>คน<br>`
+                  popupContent += 'รวม' + ":  "+'  ' + total_quantity.toLocaleString() +' '+'คน' +"<br>" 
+                  popupContent += 'ชื่อเขต' + ": " +'  '+ feature.properties[property] + "<br>";         
+
+                  break;
+                }
+                
+              }
+            }
+          }
+        }
+  layer.bindPopup(popupContent);
+
+        layer.on('click', function(e) {
+        try {
+          if (layer != previous_layer){
+            previous_layer.setStyle({  
+            fillColor: 'lightgreen',  
+            fillOpacity: 0.4,
+            });
+          }
+        }
+        catch(e) {
+
+        }
+        layer.setStyle({  
+
+              fillColor: 'red',  
+              fillOpacity: 0.4,
+            });
+
+        previous_name = feature.properties['name']
+        previous_layer = layer
+      });
+      } 
+    })
+
+
+//Home
+
+var geo_home = L.geoJSON(quantity_waste, {
+        style: function(feature) {
+            return {
+              fillColor: 'lightgreen',  
+              fillOpacity: 0.4,
+              color: 'green',
+              weight: 1.5
+            };
+          },
+
+        onEachFeature: function (feature, layer) {
+
+        var popupContent = '';
+
+        for (var property in feature.properties) {
+          if (feature.properties.hasOwnProperty(property)) {
+          
+            if (property == 'name') {
+
+              for (var i = 13350; i <= 13399; i++) {
+                dname_home = quantity_home[i].dname
+                
+                if ('เขต'+dname_home == feature.properties[property]) {
+
+                  home_quantity = quantity_home[i].house_quantity
+                  
+                  popupContent += `<i class="fa fa-home"></i>
+                                  <span style="font-family: 'inherit'; font-size: 13.5px;">
+                                   :<spacer> ${home_quantity.toLocaleString()} 
+                                  </span><spacer>หลัง<br>`
+                  popupContent += 'ชื่อเขต' + ": " +'  '+ feature.properties[property] + "<br>";         
+
+                  break;
+                }
+                
+              }
+            }
+          }
+        }
+  layer.bindPopup(popupContent);
+
+        layer.on('click', function(e) {
+        try {
+          if (layer != previous_layer){
+            previous_layer.setStyle({  
+            fillColor: 'lightgreen',  
+            fillOpacity: 0.4,
+            });
+          }
+        }
+        catch(e) {
+
+        }
+        layer.setStyle({  
+
+              fillColor: 'red',  
+              fillOpacity: 0.4,
+            });
+
+        previous_name = feature.properties['name']
+        previous_layer = layer
+      });
+      } 
+    })
+
+
+button_dust.addEventListener('click', () => {
+    if (!m.hasLayer(geo_aqi)) {
+    m.removeLayer(geo);
+    m.removeLayer(geo_waste);
+    m.removeLayer(geo_people);
+    m.removeLayer(geo_home);
+    m.addLayer(geo_aqi);
+  } 
+  });
+
+button_waste.addEventListener('click', () => {
+  if (!m.hasLayer(geo_waste)) {
+    m.removeLayer(geo);
+    m.removeLayer(geo_aqi);
+    m.removeLayer(geo_people);
+    m.removeLayer(geo_home);
+    m.addLayer(geo_waste);
+  } 
+  });
+
+  button_people.addEventListener('click', () => {
+    if (!m.hasLayer(geo_people)) {
+    m.removeLayer(geo);
+    m.removeLayer(geo_aqi);
+    m.removeLayer(geo_waste);
+    m.removeLayer(geo_home);
+    m.addLayer(geo_people);
+  } 
+  });
+
+  button_home.addEventListener('click', () => {
+    if (!m.hasLayer(geo_home)) {
+    m.removeLayer(geo);
+    m.removeLayer(geo_aqi);
+    m.removeLayer(geo_waste);
+    m.removeLayer(geo_people);
+    m.addLayer(geo_home);
+  } 
+  });
+
+  </script>
+    
+</body>
+</html>
